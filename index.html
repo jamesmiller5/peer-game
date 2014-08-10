@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+	<head>
+		<script src="peer.0.3.9.min.js" type="text/javascript"></script>
+	</head>
+	<body>
+		<pre id="chat-output"></pre>
+		<form id="chat-input">
+			<input type="text" id="chat-input-box" />
+			<button type="button" id="connect">Connect</button>
+		</form>
+		<script>
+			/* todo: connection management, retry etc. */
+			/* todo: connection set, just a single bi-di connection */
+			/*
+			Function: getUrlParameters
+			Description: Get the value of URL parameters either from 
+			current URL or static URL
+			Author: Tirumal
+			URL: www.code-tricks.com
+			*/
+			function decodeQuery(staticURL) {
+				var currLocation = (staticURL && staticURL.length) ? staticURL : window.location.search,
+				parArr = currLocation.split("?")[1].split("&"),
+				parts = {};
+
+				for(var i = 0; i < parArr.length; i++) {
+					parr = parArr[i].split("=");
+					parts[parr[0]] = decodeURIComponent(parr[1]);
+				}
+
+				return parts;
+			}
+			qs = decodeQuery();
+
+			function bindToChat( conn ) {
+				var co = document.getElementById('chat-output');
+				co.innerHTML += 'Got a new connection from "' + conn.peer + ':' + conn.id + '"' + "\n";
+				conn.on('data', function(data) {
+					co.innerHTML += "" + data + "\n";
+				});
+
+				conn.on('close', function() {
+					co.innerHTML += 'Connection closed from "' + conn.peer + ':' + conn.id + '"' + "\n";
+				});
+
+				var cif = document.getElementById('chat-input');
+				cif.addEventListener('submit', function( e ) {
+					e.preventDefault();
+					var ci = document.getElementById('chat-input-box');
+					var input = ci.value;
+					ci.value = "";
+					conn.send( input );
+				});
+			}
+
+			// No API key required when not using cloud server
+			var peer = new Peer( (qs['my-id']) ? qs['my-id'] : 'someid' , {host: window.location.hostname, port: 9000, path: '/'});
+			peer.on('open', function(id) {
+				console.log('My peer ID is: ' + id);
+			});
+
+			peer.on('connection', function(conn) {
+				bindToChat(conn);
+			});
+
+			document.getElementById("connect").addEventListener('click', function( e ) {
+				e.preventDefault();
+				if( 'to-id' in qs ) {
+					var conn = peer.connect( ('to-id' in qs) ? qs['to-id'] : 'someid' );
+					conn.on('open', function(){
+						conn.send('hi!');
+						bindToChat(conn);
+					})
+				}
+			});
+
+		</script>
+	</body>
+</html>
